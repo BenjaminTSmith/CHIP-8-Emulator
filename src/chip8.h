@@ -3,7 +3,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <SDL2/SDL.h>
 
 typedef struct chip8
 {
@@ -26,5 +25,7 @@ void cycle(chip8 *);
 void execute_opcode(chip8 *);
 void load_rom(chip8 *, char *);
 void draw_sprite(chip8 *);
+unsigned char get_keypress(chip8 *);
+void poll_keypress(chip8 *);
 
 #endif // !CHIP8_H

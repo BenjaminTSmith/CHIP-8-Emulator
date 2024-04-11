@@ -1,5 +1,7 @@
 #include "chip8.h"
+#include <SDL2/SDL_events.h>
 #include <stdlib.h>
+#include <SDL2/SDL.h>
 
 /*
 * ---------Memory Map-------
@@ -47,7 +49,7 @@ void initialize(chip8 *chip8)
     for (size_t i = 0; i < 0xF; i++)
         chip8->V[i] = 0;
     for (size_t i = 0; i < 0x1000; i++)
-        chip8->memory[i] = 0;
+        chip8->memory[i] = 0x00;
     for (size_t i = 0; i < 0x10; i++)
         chip8->keypad[i] = 0;
     chip8->delay_timer = 0;
@@ -64,7 +66,8 @@ void cycle(chip8 *chip8)
     execute_opcode(chip8);
     if (chip8->delay_timer > 0)
         chip8->delay_timer--;
-    if (chip8->sound_timer > 0){
+    if (chip8->sound_timer > 0)
+    {
         printf("EEE!\n");
         chip8->sound_timer--;
     }
@@ -221,7 +224,7 @@ void execute_opcode(chip8 *chip8)
                     chip8->V[(chip8->opcode & 0x0F00) >> 8] = chip8->delay_timer;
                     break;
                 case 0x000A: // wait for a keypress
-                    // TODO
+                    chip8->V[(chip8->opcode & 0x0F00) >> 8] = get_keypress(chip8);
                     break;
                 case 0x0015:
                     chip8->delay_timer = chip8->V[(chip8->opcode & 0x0F00) >> 8];
@@ -286,4 +289,134 @@ void draw_sprite(chip8 *chip8)
 
 void load_rom(chip8 *chip8, char *rom)
 {
+    FILE *file = fopen(rom, "rb");
+}
+
+unsigned char get_keypress(chip8 *chip8)
+{
+    unsigned char key = 0;
+    while (!key)
+    {
+        SDL_Event event;
+        while (SDL_PollEvent(&event))
+        {
+            switch (event.key.keysym.sym)
+            {
+                case SDLK_1:
+                    key = 0x1;
+                    break;
+                case SDLK_2:
+                    key = 0x2;
+                    break;
+                case SDLK_3:
+                    key = 0x3;
+                    break;
+                case SDLK_4:
+                    key = 0xC;
+                    break;
+                case SDLK_q:
+                    key = 0x4;
+                    break;
+                case SDLK_w:
+                    key = 0x5;
+                    break;
+                case SDLK_e:
+                    key = 0x6;
+                    break;
+                case SDLK_r:
+                    key = 0xD;
+                    break;
+                case SDLK_a:
+                    key = 0x7;
+                    break;
+                case SDLK_s:
+                    key = 0x8;
+                    break;
+                case SDLK_d:
+                    key = 0x9;
+                    break;
+                case SDLK_f:
+                    key = 0xE;
+                    break;
+                case SDLK_z:
+                    key = 0xA;
+                    break;
+                case SDLK_x:
+                    key = 0x0;
+                    break;
+                case SDLK_c:
+                    key = 0xB;
+                    break;
+                case SDLK_v:
+                    key = 0xF;
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
+    return key;
+}
+
+void poll_keypress(chip8 *chip8)
+{
+    for (size_t i = 0; i < 0x10; i++)
+        chip8->keypad[i] = 0;
+    SDL_Event event;
+    while (SDL_PollEvent(&event))
+    {
+        switch (event.key.keysym.sym)
+        {
+            case SDLK_1:
+                chip8->keypad[0x01] = 1;
+                break;
+            case SDLK_2:
+                chip8->keypad[0x02] = 1;
+                break;
+            case SDLK_3:
+                chip8->keypad[0x03] = 1;
+                break;
+            case SDLK_4:
+                chip8->keypad[0x0C] = 1;
+                break;
+            case SDLK_q:
+                chip8->keypad[0x04] = 1;
+                break;
+            case SDLK_w:
+                chip8->keypad[0x05] = 1;
+                break;
+            case SDLK_e:
+                chip8->keypad[0x06] = 1;
+                break;
+            case SDLK_r:
+                chip8->keypad[0x0D] = 1;
+                break;
+            case SDLK_a:
+                chip8->keypad[0x07] = 1;
+                break;
+            case SDLK_s:
+                chip8->keypad[0x08] = 1;
+                break;
+            case SDLK_d:
+                chip8->keypad[0x09] = 1;
+                break;
+            case SDLK_f:
+                chip8->keypad[0x0E] = 1;
+                break;
+            case SDLK_z:
+                chip8->keypad[0x0A] = 1;
+                break;
+            case SDLK_x:
+                chip8->keypad[0x00] = 1;
+                break;
+            case SDLK_c:
+                chip8->keypad[0x0B] = 1;
+                break;
+            case SDLK_v:
+                chip8->keypad[0x0F] = 1;
+                break;
+            default:
+                break;
+        }
+    }
 }

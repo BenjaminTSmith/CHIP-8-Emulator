@@ -11,7 +11,7 @@ GREEN=\033[0;32m
 build :
 	mkdir -p build
 	echo "[${RED}0%${NC}] Compiling Source Files."
-	gcc -Wall -o build/main src/*.c
+	gcc -Wall -o build/main src/*.c -I/usr/include/SDL2 -lSDL2
 	echo "[${GREEN}100%${NC}] Finished Compiling."
 
 clean :
