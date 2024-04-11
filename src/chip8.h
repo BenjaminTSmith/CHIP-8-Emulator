@@ -24,7 +24,7 @@ void clear_screen(chip8 *);
 void initialize(chip8 *);
 void cycle(chip8 *);
 void execute_opcode(chip8 *);
-void load_rom(chip8 *, char **);
+void load_rom(chip8 *, char *);
 void draw_sprite(chip8 *);
 
 #endif // !CHIP8_H

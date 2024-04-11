@@ -1,4 +1,5 @@
 #include "chip8.h"
+#include <stdlib.h>
 
 /*
 * ---------Memory Map-------
@@ -63,10 +64,10 @@ void cycle(chip8 *chip8)
     execute_opcode(chip8);
     if (chip8->delay_timer > 0)
         chip8->delay_timer--;
-    if (chip8->sound_timer >= 1)
+    if (chip8->sound_timer > 0){
         printf("EEE!\n");
-    else
         chip8->sound_timer--;
+    }
 }
 
 void execute_opcode(chip8 *chip8)
@@ -124,7 +125,6 @@ void execute_opcode(chip8 *chip8)
         case 0x8000:
             switch (chip8->opcode & 0x000F)
             {
-                //TODO
                 case 0x0000:
                     chip8->V[(chip8->opcode & 0x0F00) >> 8] = chip8->V[(chip8->opcode & 0x00F0) >> 4];
                     break;
@@ -164,7 +164,7 @@ void execute_opcode(chip8 *chip8)
                                                               chip8->V[(chip8->opcode & 0x0F00) >> 8];
                     break;
                 case 0x000E:
-                    chip8->V[0xF] = chip8->V[(chip8->opcode & 0x0F00) >> 8] & 0x8000;
+                    chip8->V[0xF] = (chip8->V[(chip8->opcode & 0x0F00) >> 8] & 0x8000) >> 15;
                     chip8->V[(chip8->opcode & 0x0F00) >> 8] <<= 1;
                     break;
                 default:
@@ -197,15 +197,14 @@ void execute_opcode(chip8 *chip8)
         case 0xE000:
             switch (chip8->opcode & 0x000F)
             {
-                unsigned char key = chip8->V[(chip8->opcode & 0x0F00) >> 8];
                 case 0x000E:
-                    if (chip8->keypad[key] == 1)
+                    if (chip8->keypad[chip8->V[(chip8->opcode & 0x0F00) >> 8]] == 1)
                         chip8->PC += 4;
                     else
                         chip8->PC += 2;
                     break;
                 case 0x0001:
-                    if (chip8->keypad[key] == 0)
+                    if (chip8->keypad[chip8->V[(chip8->opcode & 0x0F00) >> 8]] == 0)
                         chip8->PC += 4;
                     else
                         chip8->PC += 2;
@@ -218,28 +217,42 @@ void execute_opcode(chip8 *chip8)
         case 0xF000:
             switch (chip8->opcode & 0x00FF)
             {
-                case 0x0007:
+                case 0x0007: // set register VX to delay timer
+                    chip8->V[(chip8->opcode & 0x0F00) >> 8] = chip8->delay_timer;
                     break;
-                case 0x000A:
+                case 0x000A: // wait for a keypress
+                    // TODO
                     break;
-                case 0x15:
+                case 0x0015:
+                    chip8->delay_timer = chip8->V[(chip8->opcode & 0x0F00) >> 8];
                     break;
                 case 0x0018:
+                    chip8->sound_timer = chip8->V[(chip8->opcode & 0x0F00) >> 8];
                     break;
                 case 0x001E:
+                    chip8->I += chip8->V[(chip8->opcode & 0x0F00) >> 8];
                     break;
-                case 0x0029:
+                case 0x0029: // set I to memory address of sprite/font data
+                    chip8->I = 0x050 + chip8->V[(chip8->opcode & 0x0F00) >> 8] * 6;
                     break;
                 case 0x0033:
+                    chip8->memory[chip8->I] = chip8->V[(chip8->opcode & 0x0F00) >> 8] / 100;
+                    chip8->memory[chip8->I + 1] = (chip8->V[(chip8->opcode & 0x0F00) >> 8] / 10) % 10;
+                    chip8->memory[chip8->I + 2] = (chip8->V[(chip8->opcode & 0x0F00) >> 8] % 100) % 10;
                     break;
                 case 0x0055:
+                    for (unsigned char i = 0; i <= (chip8->opcode & 0x0F00) >> 8; i++)
+                        chip8->memory[chip8->I + i] = chip8->V[i];
                     break;
                 case 0x0065:
+                    for (unsigned char i = 0; i <= (chip8->opcode & 0x0F00) >> 8; i++)
+                        chip8->V[i] = chip8->memory[chip8->I + i];
                     break;
                 default:
                     printf("Unknown opcode: 0x%X\n", chip8->opcode);
                     break;
             }
+            chip8->PC += 2;
             break;
         default:
             printf("Unknown opcode: 0x%X\n", chip8->opcode);
@@ -271,7 +284,6 @@ void draw_sprite(chip8 *chip8)
     }
 }
 
-void load_rom(chip8 *chip8, char **rom)
+void load_rom(chip8 *chip8, char *rom)
 {
-
 }
