@@ -1,7 +1,5 @@
 #include "chip8.h"
 #include <SDL2/SDL_events.h>
-#include <stdlib.h>
-#include <SDL2/SDL.h>
 
 /*
 * ---------Memory Map-------
@@ -30,13 +28,13 @@ unsigned char chip8_fontset[80] =
         0xF0, 0x80, 0xF0, 0x80, 0x80  // F
     };
 
-void clear_screen(chip8 *chip8)
+void clear_screen(chip8_t *chip8)
 {
     for (size_t i = 0; i < 2048; i++)
         chip8->screen[i] = 0;
 }
 
-void initialize(chip8 *chip8)
+void initialize(chip8_t *chip8)
 {
     // reset everything
     chip8->opcode = 0;
@@ -60,7 +58,7 @@ void initialize(chip8 *chip8)
         chip8->memory[0x050 + i] = chip8_fontset[i];
 }
 
-void cycle(chip8 *chip8)
+void cycle(chip8_t *chip8)
 {
     chip8->opcode = chip8->memory[chip8->PC] << 8 | chip8->memory[chip8->PC + 1];
     execute_opcode(chip8);
@@ -73,7 +71,7 @@ void cycle(chip8 *chip8)
     }
 }
 
-void execute_opcode(chip8 *chip8)
+void execute_opcode(chip8_t *chip8)
 {
     switch (chip8->opcode & 0xF000)
     {
@@ -82,6 +80,7 @@ void execute_opcode(chip8 *chip8)
             {
                 case 0x0000:
                     clear_screen(chip8);
+                    chip8->PC += 2;
                     break;
                 case 0x000E:
                     chip8->PC = chip8->stack[--chip8->stack_pointer];
@@ -141,30 +140,30 @@ void execute_opcode(chip8 *chip8)
                     chip8->V[(chip8->opcode & 0x0F00) >> 8] ^= chip8->V[(chip8->opcode & 0x00F0) >> 4];
                     break;
                 case 0x0004:
+                    chip8->V[(chip8->opcode & 0x0F00) >> 8] += chip8->V[(chip8->opcode & 0x00F0) >> 4];
                     if (chip8->V[(chip8->opcode & 0x00F0) >> 4] > (0xFF - chip8->V[(chip8->opcode & 0x0F00) >> 8]))
                         chip8->V[0xF] = 1; // carry
                     else
                         chip8->V[0xF] = 0;
-                    chip8->V[(chip8->opcode & 0x0F00) >> 8] += chip8->V[(chip8->opcode & 0x00F0) >> 4];
                     break;
                 case 0x0005:
+                    chip8->V[(chip8->opcode & 0x0F00) >> 8] -= chip8->V[(chip8->opcode & 0x00F0) >> 4];
                     if (chip8->V[(chip8->opcode & 0x0F00) >> 8] >= chip8->V[(chip8->opcode & 0x00F0) >> 4])
                         chip8->V[0xF] = 1; // carry
                     else
                         chip8->V[0xF] = 0;
-                    chip8->V[(chip8->opcode & 0x0F00) >> 8] -= chip8->V[(chip8->opcode & 0x00F0) >> 4];
                     break;
                 case 0x0006:
                     chip8->V[0xF] = chip8->V[(chip8->opcode & 0x0F00) >> 8] & 0x0001;
                     chip8->V[(chip8->opcode & 0x0F00) >> 8] >>= 1;
                     break;
                 case 0x0007:
+                    chip8->V[(chip8->opcode & 0x0F00) >> 8] = chip8->V[(chip8->opcode & 0x00F0) >> 4] -
+                                                              chip8->V[(chip8->opcode & 0x0F00) >> 8];
                     if (chip8->V[(chip8->opcode & 0x0F00) >> 8] <= chip8->V[(chip8->opcode & 0x00F0) >> 4])
                         chip8->V[0xF] = 1; // carry
                     else
                         chip8->V[0xF] = 0;
-                    chip8->V[(chip8->opcode & 0x0F00) >> 8] = chip8->V[(chip8->opcode & 0x00F0) >> 4] -
-                                                              chip8->V[(chip8->opcode & 0x0F00) >> 8];
                     break;
                 case 0x000E:
                     chip8->V[0xF] = (chip8->V[(chip8->opcode & 0x0F00) >> 8] & 0x8000) >> 15;
@@ -263,7 +262,7 @@ void execute_opcode(chip8 *chip8)
     }  
 }
 
-void draw_sprite(chip8 *chip8)
+void draw_sprite(chip8_t *chip8)
 {
     // from: https://multigesture.net/articles/how-to-write-an-emulator-chip-8-interpreter/
     unsigned short x = chip8->V[(chip8->opcode & 0x0F00) >> 8];
@@ -279,20 +278,35 @@ void draw_sprite(chip8 *chip8)
         {
             if ((pixel & (0x80 >> xline)) != 0)
             {
-                if (chip8->screen[(x + xline + ((y + yline) * 64))] == 1)
-                    chip8->V[0xF] = 1;                                 
-                chip8->screen[x + xline + ((y + yline) * 64)] ^= 1;
+                if ((x + xline + ((y + yline)) * 64) < 2048)
+                {
+                    if (chip8->screen[(x + xline + ((y + yline) * 64))] == 1)
+                        chip8->V[0xF] = 1;                                 
+                    chip8->screen[x + xline + ((y + yline) * 64)] ^= 1;
+                }
             }
         }
     }
 }
 
-void load_rom(chip8 *chip8, char *rom)
+void load_rom(chip8_t *chip8, char *rom)
 {
     FILE *file = fopen(rom, "rb");
+    if (file == NULL)
+    {
+        printf("Failed to open ROM: %s\n", rom);
+        return;
+    }
+    int mem_ptr = 0x200;
+    while (!feof(file))
+    {
+        fread(&chip8->memory[mem_ptr], 1, 1, file);
+        mem_ptr++;
+    }
+    fclose(file);
 }
 
-unsigned char get_keypress(chip8 *chip8)
+unsigned char get_keypress(chip8_t *chip8)
 {
     unsigned char key = 0;
     while (!key)
@@ -358,65 +372,73 @@ unsigned char get_keypress(chip8 *chip8)
     return key;
 }
 
-void poll_keypress(chip8 *chip8)
+void poll_keypress(chip8_t *chip8, SDL_Event event)
 {
-    for (size_t i = 0; i < 0x10; i++)
-        chip8->keypad[i] = 0;
-    SDL_Event event;
-    while (SDL_PollEvent(&event))
+    switch (event.type)
     {
-        switch (event.key.keysym.sym)
-        {
-            case SDLK_1:
-                chip8->keypad[0x01] = 1;
-                break;
-            case SDLK_2:
-                chip8->keypad[0x02] = 1;
-                break;
-            case SDLK_3:
-                chip8->keypad[0x03] = 1;
-                break;
-            case SDLK_4:
-                chip8->keypad[0x0C] = 1;
-                break;
-            case SDLK_q:
-                chip8->keypad[0x04] = 1;
-                break;
-            case SDLK_w:
-                chip8->keypad[0x05] = 1;
-                break;
-            case SDLK_e:
-                chip8->keypad[0x06] = 1;
-                break;
-            case SDLK_r:
-                chip8->keypad[0x0D] = 1;
-                break;
-            case SDLK_a:
-                chip8->keypad[0x07] = 1;
-                break;
-            case SDLK_s:
-                chip8->keypad[0x08] = 1;
-                break;
-            case SDLK_d:
-                chip8->keypad[0x09] = 1;
-                break;
-            case SDLK_f:
-                chip8->keypad[0x0E] = 1;
-                break;
-            case SDLK_z:
-                chip8->keypad[0x0A] = 1;
-                break;
-            case SDLK_x:
-                chip8->keypad[0x00] = 1;
-                break;
-            case SDLK_c:
-                chip8->keypad[0x0B] = 1;
-                break;
-            case SDLK_v:
-                chip8->keypad[0x0F] = 1;
-                break;
-            default:
-                break;
-        }
+        case SDL_KEYUP:
+            switch (event.key.keysym.sym)
+            {
+                case SDLK_1: chip8->keypad[0x01] = 0; break;
+                case SDLK_2: chip8->keypad[0x02] = 0; break;
+                case SDLK_3: chip8->keypad[0x03] = 0; break;
+                case SDLK_4: chip8->keypad[0x0C] = 0; break;
+                case SDLK_q: chip8->keypad[0x04] = 0; break;
+                case SDLK_w: chip8->keypad[0x05] = 0; break;
+                case SDLK_e: chip8->keypad[0x06] = 0; break;
+                case SDLK_r: chip8->keypad[0x0D] = 0; break;
+                case SDLK_a: chip8->keypad[0x07] = 0; break;
+                case SDLK_s: chip8->keypad[0x08] = 0; break;
+                case SDLK_d: chip8->keypad[0x09] = 0; break;
+                case SDLK_f: chip8->keypad[0x0E] = 0; break;
+                case SDLK_z: chip8->keypad[0x0A] = 0; break;
+                case SDLK_x: chip8->keypad[0x00] = 0; break;
+                case SDLK_c: chip8->keypad[0x0B] = 0; break;
+                case SDLK_v: chip8->keypad[0x0F] = 0; break;
+                default: break;
+            }
+            break;
+        case SDL_KEYDOWN:
+            switch (event.key.keysym.sym)
+            {
+                case SDLK_1: chip8->keypad[0x01] = 1; break;                 
+                case SDLK_2: chip8->keypad[0x02] = 1; break;
+                case SDLK_3: chip8->keypad[0x03] = 1; break;
+                case SDLK_4: chip8->keypad[0x0C] = 1; break;                 
+                case SDLK_q: chip8->keypad[0x04] = 1; break;                 
+                case SDLK_w: chip8->keypad[0x05] = 1; break;                 
+                case SDLK_e: chip8->keypad[0x06] = 1; break;                 
+                case SDLK_r: chip8->keypad[0x0D] = 1; break;                 
+                case SDLK_a: chip8->keypad[0x07] = 1; break;                 
+                case SDLK_s: chip8->keypad[0x08] = 1; break;                
+                case SDLK_d: chip8->keypad[0x09] = 1; break;                 
+                case SDLK_f: chip8->keypad[0x0E] = 1; break;                 
+                case SDLK_z: chip8->keypad[0x0A] = 1; break;                 
+                case SDLK_x: chip8->keypad[0x00] = 1; break;                 
+                case SDLK_c: chip8->keypad[0x0B] = 1; break;                 
+                case SDLK_v: chip8->keypad[0x0F] = 1; break;
+                default: break;
+            }
+            break;
+        default:
+            break;
     }
+}
+
+void draw_screen(chip8_t *chip8, SDL_Window *window, SDL_Renderer *renderer)
+{
+    SDL_RenderClear(renderer);
+    for (size_t i = 0; i < 64 * 32; i++)
+    {
+        SDL_Rect rect;
+        rect.x = (i * 20) % 1280;
+        rect.y = (i * 20) / 1280 * 20;
+        rect.w = 20;
+        rect.h = 20;
+        SDL_SetRenderDrawColor(renderer, 255 * chip8->screen[i],
+                               255 * chip8->screen[i],
+                               255 * chip8->screen[i], 255);
+        SDL_RenderFillRect(renderer, &rect);
+    }
+    SDL_RenderPresent(renderer);
 }

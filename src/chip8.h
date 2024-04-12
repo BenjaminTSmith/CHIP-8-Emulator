@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <SDL2/SDL.h>
 
 typedef struct chip8
 {
@@ -17,15 +18,16 @@ typedef struct chip8
     unsigned char keypad[0x10];
     unsigned char delay_timer;
     unsigned char sound_timer;
-} chip8;
+} chip8_t;
 
-void clear_screen(chip8 *);
-void initialize(chip8 *);
-void cycle(chip8 *);
-void execute_opcode(chip8 *);
-void load_rom(chip8 *, char *);
-void draw_sprite(chip8 *);
-unsigned char get_keypress(chip8 *);
-void poll_keypress(chip8 *);
+void clear_screen(chip8_t *);
+void initialize(chip8_t *);
+void cycle(chip8_t *);
+void execute_opcode(chip8_t *);
+void load_rom(chip8_t *, char *);
+void draw_sprite(chip8_t *);
+unsigned char get_keypress(chip8_t *);
+void poll_keypress(chip8_t *, SDL_Event);
+void draw_screen(chip8_t *, SDL_Window *, SDL_Renderer *);
 
 #endif // !CHIP8_H
