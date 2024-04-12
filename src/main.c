@@ -1,11 +1,14 @@
 #include "chip8.h"
-#include <SDL2/SDL_render.h>
+
+#define CYCLES_PER_FRAME 100
 
 int main(int argc, char **argv)
 {
     SDL_Init(SDL_INIT_EVERYTHING);
     chip8_t chip8;
     initialize(&chip8);
+    if (argc == 1)
+        printf("Usage: ./main [ROM binary] [CYCLES_PER_FRAME]\n");
     if (argc > 1)
         load_rom(&chip8, argv[1]);
 
@@ -28,11 +31,10 @@ int main(int argc, char **argv)
             }
             poll_keypress(&chip8, event);
         }
-        for (Uint32 i = 0; i < 500 / 60; i++) // set clock rate of CHIP-8 to about 60hz
+        for (Uint32 i = 0; i < CYCLES_PER_FRAME; i++) // set clock rate of CHIP-8 to about 60hz
             cycle(&chip8);
 
         draw_screen(&chip8, window, renderer);
-        SDL_Delay(16);
     }
 
     SDL_DestroyWindow(window);

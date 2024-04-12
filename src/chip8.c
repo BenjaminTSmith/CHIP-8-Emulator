@@ -87,7 +87,7 @@ void execute_opcode(chip8_t *chip8)
                     chip8->PC += 2;
                     break;
                 default:
-                    printf("Unknown opcode: 0x%X", chip8->opcode);
+                    printf("Unknown opcode: 0x%.4X", chip8->opcode);
                     break;
             }
             break;
@@ -141,36 +141,39 @@ void execute_opcode(chip8_t *chip8)
                     break;
                 case 0x0004:
                     chip8->V[(chip8->opcode & 0x0F00) >> 8] += chip8->V[(chip8->opcode & 0x00F0) >> 4];
-                    if (chip8->V[(chip8->opcode & 0x00F0) >> 4] > (0xFF - chip8->V[(chip8->opcode & 0x0F00) >> 8]))
+                    if (chip8->V[(chip8->opcode & 0x00F0) >> 4] >= (0xFF - chip8->V[(chip8->opcode & 0x0F00) >> 8]))
                         chip8->V[0xF] = 1; // carry
                     else
                         chip8->V[0xF] = 0;
                     break;
                 case 0x0005:
                     chip8->V[(chip8->opcode & 0x0F00) >> 8] -= chip8->V[(chip8->opcode & 0x00F0) >> 4];
-                    if (chip8->V[(chip8->opcode & 0x0F00) >> 8] >= chip8->V[(chip8->opcode & 0x00F0) >> 4])
+                    if (chip8->V[(chip8->opcode & 0x00F0) >> 4] > chip8->V[(chip8->opcode & 0x0F00) >> 8])
                         chip8->V[0xF] = 1; // carry
                     else
                         chip8->V[0xF] = 0;
                     break;
                 case 0x0006:
-                    chip8->V[0xF] = chip8->V[(chip8->opcode & 0x0F00) >> 8] & 0x0001;
                     chip8->V[(chip8->opcode & 0x0F00) >> 8] >>= 1;
+                    chip8->V[0xF] = chip8->V[(chip8->opcode & 0x0F00) >> 8] & 0x0001;
                     break;
                 case 0x0007:
                     chip8->V[(chip8->opcode & 0x0F00) >> 8] = chip8->V[(chip8->opcode & 0x00F0) >> 4] -
-                                                              chip8->V[(chip8->opcode & 0x0F00) >> 8];
+                        chip8->V[(chip8->opcode & 0x0F00) >> 8];
                     if (chip8->V[(chip8->opcode & 0x0F00) >> 8] <= chip8->V[(chip8->opcode & 0x00F0) >> 4])
                         chip8->V[0xF] = 1; // carry
                     else
                         chip8->V[0xF] = 0;
                     break;
                 case 0x000E:
-                    chip8->V[0xF] = (chip8->V[(chip8->opcode & 0x0F00) >> 8] & 0x8000) >> 15;
-                    chip8->V[(chip8->opcode & 0x0F00) >> 8] <<= 1;
-                    break;
+                    {
+                        unsigned char last_bit = (chip8->V[(chip8->opcode & 0x0F00) >> 8] & 0x8000) >> 14;
+                        chip8->V[(chip8->opcode & 0x0F00) >> 8] <<= 1;
+                        chip8->V[0xF] = last_bit;
+                        break;
+                    }
                 default:
-                    printf("Unknown opcode: 0x%X\n", chip8->opcode);
+                    printf("Unknown opcode: 0x%.4X", chip8->opcode);
                     break;
             }
             chip8->PC += 2;
@@ -212,7 +215,7 @@ void execute_opcode(chip8_t *chip8)
                         chip8->PC += 2;
                     break;
                 default:
-                    printf("Unknown opcode: 0x%X\n", chip8->opcode);
+                    printf("Unknown opcode: 0x%.4X", chip8->opcode);
                     break;
             }
             break;
@@ -251,7 +254,7 @@ void execute_opcode(chip8_t *chip8)
                         chip8->V[i] = chip8->memory[chip8->I + i];
                     break;
                 default:
-                    printf("Unknown opcode: 0x%X\n", chip8->opcode);
+                    printf("Unknown opcode: 0x%.4X", chip8->opcode);
                     break;
             }
             chip8->PC += 2;
@@ -264,7 +267,8 @@ void execute_opcode(chip8_t *chip8)
 
 void draw_sprite(chip8_t *chip8)
 {
-    // from: https://multigesture.net/articles/how-to-write-an-emulator-chip-8-interpreter/
+    // adapted from: 
+    // https://multigesture.net/articles/how-to-write-an-emulator-chip-8-interpreter/
     unsigned short x = chip8->V[(chip8->opcode & 0x0F00) >> 8];
     unsigned short y = chip8->V[(chip8->opcode & 0x00F0) >> 4];
     unsigned short height = chip8->opcode & 0x000F;
