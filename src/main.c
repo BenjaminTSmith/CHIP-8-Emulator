@@ -17,11 +17,7 @@ int main(int argc, char **argv)
     int running = 1;
     while (running)
     {
-        cycle(&chip8);
-        draw_screen(&chip8, window, renderer);
         SDL_Event event;
-        for (size_t i = 0; i < 0x10; i++)
-            //chip8.keypad[i] = 0;
         while (SDL_PollEvent(&event))
         {
             switch (event.type)
@@ -32,6 +28,11 @@ int main(int argc, char **argv)
             }
             poll_keypress(&chip8, event);
         }
+        for (Uint32 i = 0; i < 500 / 60; i++) // set clock rate of CHIP-8 to about 60hz
+            cycle(&chip8);
+
+        draw_screen(&chip8, window, renderer);
+        SDL_Delay(16);
     }
 
     SDL_DestroyWindow(window);
