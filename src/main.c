@@ -1,6 +1,6 @@
 #include "chip8.h"
 
-#define CYCLES_PER_FRAME 100
+#define CYCLES_PER_FRAME 10
 
 int main(int argc, char **argv)
 {
